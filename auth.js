@@ -7,10 +7,13 @@ export function signAdminToken(payload) {
 }
 
 export function setAuthCookie(res, token) {
+  const isProduction = process.env.NODE_ENV === "production";
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // Frontend (Vercel) and API (Render) are different sites in production.
+    // Cross-site cookies require SameSite=None and Secure=true.
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }

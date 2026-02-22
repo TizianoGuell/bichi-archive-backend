@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
   category TEXT NOT NULL DEFAULT 'General',
   description TEXT DEFAULT '',
   image_url TEXT DEFAULT '',
+  image_urls TEXT DEFAULT '[]',
   stock INTEGER NOT NULL DEFAULT 0,
   featured INTEGER NOT NULL DEFAULT 0,
   sold_out INTEGER NOT NULL DEFAULT 0,

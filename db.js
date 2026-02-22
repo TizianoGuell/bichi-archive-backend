@@ -18,4 +18,20 @@ const schemaPath = path.join(__dirname, "db", "sqlite", "schema.sql");
 const schema = fs.readFileSync(schemaPath, "utf8");
 db.exec(schema);
 
+const columns = db.prepare("PRAGMA table_info(products)").all();
+const hasImageUrls = columns.some((col) => col.name === "image_urls");
+if (!hasImageUrls) {
+  db.prepare("ALTER TABLE products ADD COLUMN image_urls TEXT DEFAULT '[]'").run();
+}
+
+const rows = db.prepare("SELECT id, image_url, image_urls FROM products").all();
+const update = db.prepare("UPDATE products SET image_urls = ? WHERE id = ?");
+for (const row of rows) {
+  const current = String(row.image_urls || "");
+  const hasList = current.trim().startsWith("[") && current.trim().length > 2;
+  if (!hasList && row.image_url) {
+    update.run(JSON.stringify([row.image_url]), row.id);
+  }
+}
+
 export default db;

@@ -63,10 +63,30 @@ async function bootstrapAdminFromEnv() {
   console.log(`Bootstrap admin created: ${email}`);
 }
 
+function toImageUrls(row) {
+  const raw = row?.image_urls;
+  if (Array.isArray(raw)) return raw.filter((url) => typeof url === "string" && url.trim().length > 0);
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((url) => typeof url === "string" && url.trim().length > 0);
+      }
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+  const fallback = row?.image_url;
+  return fallback ? [String(fallback)] : [];
+}
+
 function normalizeProduct(row) {
   if (!row) return row;
+  const image_urls = toImageUrls(row);
   return {
     ...row,
+    image_urls,
+    image_url: row.image_url || image_urls[0] || "",
     featured: Boolean(row.featured),
     sold_out: Boolean(row.sold_out),
   };
@@ -90,7 +110,7 @@ app.get("/api/products", (_req, res) => {
   try {
     const rows = db
       .prepare(
-        `SELECT id, name, price, category, description, image_url, stock, featured, sold_out, created_at
+        `SELECT id, name, price, category, description, image_url, image_urls, stock, featured, sold_out, created_at
          FROM products
          ORDER BY featured DESC, created_at DESC`
       )
@@ -209,23 +229,26 @@ app.get("/api/admin/debug/products", requireAdmin, (_req, res) => {
 });
 
 app.post("/api/admin/products", requireAdmin, (req, res) => {
-  const { name, price, category, description, image_url, stock, featured, sold_out } = req.body ?? {};
+  const { name, price, category, description, image_url, image_urls, stock, featured, sold_out } = req.body ?? {};
   if (!name || !category) {
     return res.status(400).json({ error: "name and category are required" });
   }
+  const urls = Array.isArray(image_urls) ? image_urls.filter((url) => typeof url === "string" && url.trim()) : [];
+  const primaryUrl = urls[0] || image_url || "";
 
   try {
     const result = db
       .prepare(
-        `INSERT INTO products (name, price, category, description, image_url, stock, featured, sold_out)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO products (name, price, category, description, image_url, image_urls, stock, featured, sold_out)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         name,
         Number(price || 0),
         category,
         description || "",
-        image_url || "",
+        primaryUrl,
+        JSON.stringify(urls.length ? urls : primaryUrl ? [primaryUrl] : []),
         Number(stock || 0),
         featured ? 1 : 0,
         sold_out ? 1 : 0
@@ -240,12 +263,14 @@ app.post("/api/admin/products", requireAdmin, (req, res) => {
 
 app.put("/api/admin/products/:id", requireAdmin, (req, res) => {
   const id = Number(req.params.id);
-  const { name, price, category, description, image_url, stock, featured, sold_out } = req.body ?? {};
+  const { name, price, category, description, image_url, image_urls, stock, featured, sold_out } = req.body ?? {};
+  const urls = Array.isArray(image_urls) ? image_urls.filter((url) => typeof url === "string" && url.trim()) : [];
+  const primaryUrl = urls[0] || image_url || "";
 
   try {
     db.prepare(
       `UPDATE products
-       SET name = ?, price = ?, category = ?, description = ?, image_url = ?, stock = ?, featured = ?, sold_out = ?,
+       SET name = ?, price = ?, category = ?, description = ?, image_url = ?, image_urls = ?, stock = ?, featured = ?, sold_out = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     ).run(
@@ -253,7 +278,8 @@ app.put("/api/admin/products/:id", requireAdmin, (req, res) => {
       Number(price || 0),
       category,
       description || "",
-      image_url || "",
+      primaryUrl,
+      JSON.stringify(urls.length ? urls : primaryUrl ? [primaryUrl] : []),
       Number(stock || 0),
       featured ? 1 : 0,
       sold_out ? 1 : 0,

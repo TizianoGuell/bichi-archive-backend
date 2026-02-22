@@ -40,11 +40,3 @@ CREATE TABLE IF NOT EXISTS product_sizes (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
   FOREIGN KEY (size_id) REFERENCES sizes(id) ON DELETE CASCADE
 );
-
-INSERT OR IGNORE INTO products (id, name, price, category, description, featured) VALUES
-(1, 'Urban Shadow Hoodie', 89.99, 'Hoodies', 'Hoodie premium con capucha oversized y bordado exclusivo Bichi Archive.', 1),
-(2, 'Street Core Tee', 45.99, 'T-shirts', 'Camiseta de algodon premium con estampado frontal Bichi Archive.', 1),
-(3, 'Tactical Cargo Pants', 79.99, 'Cargo Pants', 'Pantalon cargo con multiples bolsillos y corte streetwear.', 0),
-(4, 'Archive Snapback Cap', 34.99, 'Caps', 'Gorra snapback con logo bordado Bichi Archive.', 0),
-(5, 'Night Ops Jacket', 129.99, 'Jackets', 'Chaqueta tecnica con detalles reflectantes y cierre YKK.', 1),
-(6, 'Phantom Oversized Tee', 49.99, 'T-shirts', 'Camiseta oversized con grafico posterior exclusivo.', 0);

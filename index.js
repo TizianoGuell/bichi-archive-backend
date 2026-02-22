@@ -4,11 +4,35 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+import multer from "multer";
 import db from "./db.js";
 import { clearAuthCookie, requireAdmin, setAuthCookie, signAdminToken, parseAdminToken } from "./auth.js";
 
 const app = express();
 const port = Number(process.env.PORT || process.env.API_PORT || 4000);
+app.set("trust proxy", 1);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDir = path.join(__dirname, "uploads");
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      cb(null, `${crypto.randomUUID()}${ext}`);
+    },
+  }),
+  fileFilter: (_req, file, cb) => {
+    cb(null, Boolean(file.mimetype && file.mimetype.startsWith("image/")));
+  },
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 async function bootstrapAdminFromEnv() {
   const email = process.env.ADMIN_EMAIL;
@@ -56,6 +80,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(uploadDir));
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -107,6 +132,14 @@ app.post("/api/admin/login", async (req, res) => {
 app.post("/api/admin/logout", (_req, res) => {
   clearAuthCookie(res);
   res.status(204).send();
+});
+
+app.post("/api/admin/upload", requireAdmin, upload.single("image"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No image file provided" });
+  }
+  const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+  return res.json({ url: `${baseUrl}/uploads/${req.file.filename}` });
 });
 
 app.get("/api/admin/session", (req, res) => {

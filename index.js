@@ -10,6 +10,35 @@ import { clearAuthCookie, requireAdmin, setAuthCookie, signAdminToken, parseAdmi
 const app = express();
 const port = Number(process.env.PORT || process.env.API_PORT || 4000);
 
+async function bootstrapAdminFromEnv() {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) return;
+
+  const hash = await bcrypt.hash(password, 10);
+  const existing = db
+    .prepare("SELECT id FROM admin_users WHERE email = ? LIMIT 1")
+    .get(email);
+
+  if (existing) {
+    db.prepare("UPDATE admin_users SET password_hash = ?, role = 'admin' WHERE id = ?").run(
+      hash,
+      existing.id
+    );
+    // eslint-disable-next-line no-console
+    console.log(`Bootstrap admin updated: ${email}`);
+    return;
+  }
+
+  db.prepare("INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, 'admin')").run(
+    email,
+    hash
+  );
+  // eslint-disable-next-line no-console
+  console.log(`Bootstrap admin created: ${email}`);
+}
+
 function normalizeProduct(row) {
   if (!row) return row;
   return {
@@ -215,7 +244,12 @@ app.delete("/api/admin/products/:id", requireAdmin, (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API running on http://localhost:${port}`);
-});
+async function startServer() {
+  await bootstrapAdminFromEnv();
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`API running on http://localhost:${port}`);
+  });
+}
+
+startServer();

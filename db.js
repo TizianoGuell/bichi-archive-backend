@@ -32,6 +32,24 @@ db.prepare(
   )`
 ).run();
 
+db.prepare(
+  `CREATE TABLE IF NOT EXISTS sizes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`
+).run();
+
+db.prepare(
+  `CREATE TABLE IF NOT EXISTS product_sizes (
+    product_id INTEGER NOT NULL,
+    size_id INTEGER NOT NULL,
+    PRIMARY KEY (product_id, size_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (size_id) REFERENCES sizes(id) ON DELETE CASCADE
+  )`
+).run();
+
 const categoryCount = db.prepare("SELECT COUNT(*) as count FROM categories").get();
 if (Number(categoryCount?.count || 0) === 0) {
   const names = db.prepare("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''").all();

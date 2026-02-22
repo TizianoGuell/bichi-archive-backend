@@ -162,6 +162,58 @@ app.post("/api/admin/upload", requireAdmin, upload.single("image"), (req, res) =
   return res.json({ url: `${baseUrl}/uploads/${req.file.filename}` });
 });
 
+app.get("/api/admin/tags", requireAdmin, (_req, res) => {
+  try {
+    const rows = db.prepare("SELECT id, name, created_at FROM tags ORDER BY name ASC").all();
+    return res.json(rows);
+  } catch {
+    return res.status(500).json({ error: "Failed to load tags" });
+  }
+});
+
+app.post("/api/admin/tags", requireAdmin, (req, res) => {
+  const name = String(req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "name is required" });
+
+  try {
+    const result = db.prepare("INSERT INTO tags (name) VALUES (?)").run(name);
+    const row = db.prepare("SELECT id, name, created_at FROM tags WHERE id = ?").get(result.lastInsertRowid);
+    return res.status(201).json(row);
+  } catch (err) {
+    if (String(err?.message || "").includes("UNIQUE")) {
+      return res.status(409).json({ error: "Tag already exists" });
+    }
+    return res.status(500).json({ error: "Failed to create tag" });
+  }
+});
+
+app.put("/api/admin/tags/:id", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const name = String(req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "name is required" });
+
+  try {
+    db.prepare("UPDATE tags SET name = ? WHERE id = ?").run(name, id);
+    const row = db.prepare("SELECT id, name, created_at FROM tags WHERE id = ?").get(id);
+    return res.json(row || null);
+  } catch (err) {
+    if (String(err?.message || "").includes("UNIQUE")) {
+      return res.status(409).json({ error: "Tag already exists" });
+    }
+    return res.status(500).json({ error: "Failed to update tag" });
+  }
+});
+
+app.delete("/api/admin/tags/:id", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    db.prepare("DELETE FROM tags WHERE id = ?").run(id);
+    return res.status(204).send();
+  } catch {
+    return res.status(500).json({ error: "Failed to delete tag" });
+  }
+});
+
 app.get("/api/admin/session", (req, res) => {
   const token = parseAdminToken(req);
   if (!token) {

@@ -24,6 +24,14 @@ if (!hasImageUrls) {
   db.prepare("ALTER TABLE products ADD COLUMN image_urls TEXT DEFAULT '[]'").run();
 }
 
+db.prepare(
+  `CREATE TABLE IF NOT EXISTS tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`
+).run();
+
 const rows = db.prepare("SELECT id, image_url, image_urls FROM products").all();
 const update = db.prepare("UPDATE products SET image_urls = ? WHERE id = ?");
 for (const row of rows) {

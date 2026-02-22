@@ -21,6 +21,12 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS tags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 INSERT OR IGNORE INTO products (id, name, price, category, description, featured) VALUES
 (1, 'Urban Shadow Hoodie', 89.99, 'Hoodies', 'Hoodie premium con capucha oversized y bordado exclusivo Bichi Archive.', 1),
 (2, 'Street Core Tee', 45.99, 'T-shirts', 'Camiseta de algodon premium con estampado frontal Bichi Archive.', 1),

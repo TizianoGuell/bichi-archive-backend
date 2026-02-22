@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "echo \"No build step required\"",
+    "start": "node index.js",
     "dev": "node index.js",
     "create:admin": "node create-admin.js"
   },

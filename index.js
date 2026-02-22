@@ -162,55 +162,64 @@ app.post("/api/admin/upload", requireAdmin, upload.single("image"), (req, res) =
   return res.json({ url: `${baseUrl}/uploads/${req.file.filename}` });
 });
 
-app.get("/api/admin/tags", requireAdmin, (_req, res) => {
+app.get("/api/admin/categories", requireAdmin, (_req, res) => {
   try {
-    const rows = db.prepare("SELECT id, name, created_at FROM tags ORDER BY name ASC").all();
+    const rows = db.prepare("SELECT id, name, created_at FROM categories ORDER BY name ASC").all();
     return res.json(rows);
   } catch {
-    return res.status(500).json({ error: "Failed to load tags" });
+    return res.status(500).json({ error: "Failed to load categories" });
   }
 });
 
-app.post("/api/admin/tags", requireAdmin, (req, res) => {
+app.post("/api/admin/categories", requireAdmin, (req, res) => {
   const name = String(req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "name is required" });
 
   try {
-    const result = db.prepare("INSERT INTO tags (name) VALUES (?)").run(name);
-    const row = db.prepare("SELECT id, name, created_at FROM tags WHERE id = ?").get(result.lastInsertRowid);
+    const result = db.prepare("INSERT INTO categories (name) VALUES (?)").run(name);
+    const row = db.prepare("SELECT id, name, created_at FROM categories WHERE id = ?").get(result.lastInsertRowid);
     return res.status(201).json(row);
   } catch (err) {
     if (String(err?.message || "").includes("UNIQUE")) {
-      return res.status(409).json({ error: "Tag already exists" });
+      return res.status(409).json({ error: "Category already exists" });
     }
-    return res.status(500).json({ error: "Failed to create tag" });
+    return res.status(500).json({ error: "Failed to create category" });
   }
 });
 
-app.put("/api/admin/tags/:id", requireAdmin, (req, res) => {
+app.put("/api/admin/categories/:id", requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const name = String(req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "name is required" });
 
   try {
-    db.prepare("UPDATE tags SET name = ? WHERE id = ?").run(name, id);
-    const row = db.prepare("SELECT id, name, created_at FROM tags WHERE id = ?").get(id);
+    const current = db.prepare("SELECT name FROM categories WHERE id = ?").get(id);
+    db.prepare("UPDATE categories SET name = ? WHERE id = ?").run(name, id);
+    if (current?.name && current.name !== name) {
+      db.prepare("UPDATE products SET category = ? WHERE category = ?").run(name, current.name);
+    }
+    const row = db.prepare("SELECT id, name, created_at FROM categories WHERE id = ?").get(id);
     return res.json(row || null);
   } catch (err) {
     if (String(err?.message || "").includes("UNIQUE")) {
-      return res.status(409).json({ error: "Tag already exists" });
+      return res.status(409).json({ error: "Category already exists" });
     }
-    return res.status(500).json({ error: "Failed to update tag" });
+    return res.status(500).json({ error: "Failed to update category" });
   }
 });
 
-app.delete("/api/admin/tags/:id", requireAdmin, (req, res) => {
+app.delete("/api/admin/categories/:id", requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   try {
-    db.prepare("DELETE FROM tags WHERE id = ?").run(id);
+    const current = db.prepare("SELECT name FROM categories WHERE id = ?").get(id);
+    db.prepare("DELETE FROM categories WHERE id = ?").run(id);
+    if (current?.name) {
+      db.prepare("INSERT OR IGNORE INTO categories (name) VALUES ('General')").run();
+      db.prepare("UPDATE products SET category = 'General' WHERE category = ?").run(current.name);
+    }
     return res.status(204).send();
   } catch {
-    return res.status(500).json({ error: "Failed to delete tag" });
+    return res.status(500).json({ error: "Failed to delete category" });
   }
 });
 

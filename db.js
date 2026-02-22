@@ -25,12 +25,22 @@ if (!hasImageUrls) {
 }
 
 db.prepare(
-  `CREATE TABLE IF NOT EXISTS tags (
+  `CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`
 ).run();
+
+const categoryCount = db.prepare("SELECT COUNT(*) as count FROM categories").get();
+if (Number(categoryCount?.count || 0) === 0) {
+  const names = db.prepare("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''").all();
+  const insert = db.prepare("INSERT OR IGNORE INTO categories (name) VALUES (?)");
+  for (const row of names) {
+    insert.run(row.category);
+  }
+  insert.run("General");
+}
 
 const rows = db.prepare("SELECT id, image_url, image_urls FROM products").all();
 const update = db.prepare("UPDATE products SET image_urls = ? WHERE id = ?");
